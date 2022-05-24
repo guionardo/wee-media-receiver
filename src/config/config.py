@@ -24,6 +24,10 @@ class Config:
         # Upload
         self.max_upload_size = int(self._getenv('MAX_UPLOAD_SIZE', '52428800'))
 
+        # CORS
+        self.cors_origins = self._getenv('CORS_ORIGINS', '*').split(',')
+
+
     def s3_to_dict(self) -> dict:
         return dict(
             aws_access_key_id=self.access_key,

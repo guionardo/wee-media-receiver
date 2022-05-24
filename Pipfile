@@ -4,6 +4,11 @@ verify_ssl = true
 name = "pypi"
 
 [packages]
+fastapi = "*"
+uvicorn = "*"
+boto3 = "*"
+python-multipart = "*"
+loguru = "*"
 
 [dev-packages]
 autopep8 = "*"

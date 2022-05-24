@@ -9,6 +9,7 @@ uvicorn = "*"
 boto3 = "*"
 python-multipart = "*"
 loguru = "*"
+starlette = "*"
 
 [dev-packages]
 autopep8 = "*"

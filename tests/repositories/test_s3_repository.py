@@ -1,7 +1,7 @@
 import unittest
 
-from src.repositories.s3_repository import S3Client, Config
 from src.config.dotenv import load_dotenv
+from src.repositories.s3_repository import Config, S3Client
 
 
 class TestS3Repository(unittest.TestCase):

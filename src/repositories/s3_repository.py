@@ -8,12 +8,14 @@ from src.config.config import Config
 from src.dto.media_status_enum import MediaStatusEnum
 
 
+
 class S3Client:
 
     def __init__(self, config: Config):
         self._config = config
         self.log = logging.getLogger(__name__)
-        self.bucket: boto3.resources.factory.s3.Bucket = self.setup_bucket()
+        self.client = boto3.client('s3', **self._config.s3_to_dict())
+        self.bucket = self.setup_bucket()
         self.log.info('S3Client initialized - %s:%s',
                       self._config.endpoint_url, self._config.bucket_name)
 
@@ -61,6 +63,18 @@ class S3Client:
         except Exception as e:
             self.log.error(e)
             return None
+
+    def download_file(self, media_id: str, filename: str):
+        try:
+            self.client.download_file(
+                Bucket=self._config.bucket_name,
+                Key=media_id,
+                Filename=filename)
+            self.log.info('Downloaded file #%s', media_id)
+            return True
+        except Exception as e:
+            self.log.error(e)
+            return False
 
     def get_file_metadata(self, media_id: str) -> dict:
         try:

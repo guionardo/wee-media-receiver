@@ -116,3 +116,20 @@ sequenceDiagram
     end
   end
 ```
+
+## Priorização
+
+POST /video/{id_video}
+
+  1. Identificar se o vídeo existe no S3
+  2. Existindo, retorna 202 ACCEPTED
+  3. Enfileira o id_video para processamento
+
+Processamento
+
+  1. Download do vídeo do S3
+  2. Análise do conteúdo do vídeo e geração de tags
+  3. Análise e otimização do vídeo
+  4. Upload do novo vídeo para o S3
+  5. Notificação para o site bomperfil sobre o processo terminado do vídeo, com o novo nome de arquivo e as tags
+  6. Com o aceite do bomperfil, exclui o arquivo anterior do S3

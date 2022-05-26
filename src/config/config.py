@@ -16,6 +16,8 @@ class Config:
         self.secret_key = self._getenv('S3_SECRET_KEY')
         self.bucket_name = self._getenv('S3_BUCKET_NAME')
         self.endpoint_url = self._getenv('S3_ENDPOINT_URL')
+        if not self.endpoint_url.endswith('/'):
+            self.endpoint_url += '/'
         # Website notification
         self.backend_url = self._getenv('BACKEND_URL', '')
         # Database
@@ -26,7 +28,6 @@ class Config:
 
         # CORS
         self.cors_origins = self._getenv('CORS_ORIGINS', '*').split(',')
-
 
     def s3_to_dict(self) -> dict:
         return dict(

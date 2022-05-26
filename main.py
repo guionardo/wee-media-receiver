@@ -3,7 +3,8 @@
 from pathlib import Path
 
 import uvicorn
-from fastapi import BackgroundTasks, FastAPI, Request, Response, UploadFile, status
+from fastapi import (BackgroundTasks, FastAPI, Request, Response, UploadFile,
+                     status)
 from fastapi.middleware.cors import CORSMiddleware
 
 from src import __appname__, __description__, __version__
@@ -11,6 +12,7 @@ from src.app.service import MediaReceiverService
 from src.app.video_worker import VideoWorker
 from src.config.config import Config
 from src.config.dotenv import load_dotenv
+from src.dto.media_request import MediaProcessRequest, MediaRequestValidator
 from src.dto.media_status_enum import MediaStatusEnum
 from src.dto.media_status_response import MediaStatusResponse
 from src.dto.video_receive_response import VideoReceiveResponse
@@ -65,24 +67,36 @@ async def root():
 #     return service.receive_media(media_type, media_id)
 
 
-@app.post('/media/{media_id}', response_model=MediaStatusResponse)
+@app.post('/media', response_model=MediaStatusResponse)
 async def upload_media(file: UploadFile, media_id: str, background_tasks: BackgroundTasks, request: Request):
     background_tasks.add_task(
         service.upload_media, media_id, file, request.headers.get('content-length'))
     return MediaStatusResponse(media_id=media_id, status=MediaStatusEnum.Accepted)
 
 
-@app.post('/video/{media_id}', response_model=VideoReceiveResponse, status_code=status.HTTP_202_ACCEPTED)
-async def process_video(media_id: str, response: Response):
+@app.post('/video', response_model=VideoReceiveResponse, status_code=status.HTTP_202_ACCEPTED)
+async def process_video(media_request: MediaProcessRequest, response: Response):
+    try:
+        request = MediaRequestValidator(media_request.url)
+    except Exception as e:
+        response.status_code = status.HTTP_400_BAD_REQUEST
+        return VideoReceiveResponse(media_id=request.media_id, status=MediaStatusEnum.Rejected, message=str(e))
+
+    media_id = request.media_id
+
+    if request.s3_host != config.endpoint_url:
+        response.status_code = status.HTTP_400_BAD_REQUEST
+        return VideoReceiveResponse(media_id=media_id, status=MediaStatusEnum.Rejected, message='Invalid S3 host')
+
+    if request.bucket_name != config.bucket_name:
+        response.status_code = status.HTTP_400_BAD_REQUEST
+        return VideoReceiveResponse(media_id=media_id, status=MediaStatusEnum.Rejected, message='Invalid S3 bucket')
+
     if not service.register_process_video(media_id):
         response.status_code = status.HTTP_404_NOT_FOUND
         return VideoReceiveResponse(media_id=media_id, message="NOT FOUND")
     return VideoReceiveResponse(media_id=media_id, message="ACCEPTED")
 
-
-# @app.get('/media/{media_id}')
-# async def get_media(media_id: str):
-#     return {"media_id": media_id}
 
 if __name__ == '__main__':
     uvicorn.run(app, host='0.0.0.0', port=8000)

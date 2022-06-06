@@ -8,12 +8,11 @@ from src.config.config import Config
 from src.dto.media_status_enum import MediaStatusEnum
 
 
-
 class S3Client:
 
     def __init__(self, config: Config):
         self._config = config
-        self.log = logging.getLogger(__name__)
+        self.log = logging.getLogger(self.__class__.__name__)
         self.client = boto3.client('s3', **self._config.s3_to_dict())
         self.bucket = self.setup_bucket()
         self.log.info('S3Client initialized - %s:%s',
@@ -54,7 +53,7 @@ class S3Client:
             self.bucket.upload_fileobj(file.file, media_id, ExtraArgs={
                 'ContentType': file.content_type,
                 'ACL': 'public-read',
-                'Metadata': {'WMR_STATUS': MediaStatusEnum.Accepted.value}
+                'Metadata': {'wmr-status': MediaStatusEnum.Accepted.value}
             })
 
             self.log.info('Done upload %s bytes @ %s B/s', content_length,

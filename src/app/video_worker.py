@@ -6,25 +6,26 @@ from queue import Empty, Queue
 from typing import Tuple
 
 import filetype
+from src.analysis.model_processor import VideoAnalyzer
 from src.app.s3_object import S3Object
 from src.app.video_optimizer import VideoOptimizer, optimize_video
 from src.config.config import Config
-from src.repositories.s3_repository import S3Client
 
 q = Queue()
 
 
 class VideoWorker:
 
-    def __init__(self, config: Config, s3_client: S3Client):
+    def __init__(self, config: Config):
         self.config = config
-        self.s3_client = s3_client
+        # self.s3_client = s3_client
         self.can_run = False
         self.log = logging.getLogger(__name__)
 
     def add_received_file(self, media_id: str) -> bool:
-        if not self.s3_client.file_exists(media_id):
-            return False
+        with S3Object(self.config, media_id) as s3_object:
+            if not s3_object.exists:
+                return False
         q.put(media_id, block=True)
         self.log.info('Added file to queue: %s (total enqueued=%d)',
                       media_id, q.qsize())
@@ -48,46 +49,57 @@ class VideoWorker:
             try:
                 media_id = queue.get(block=True, timeout=2)
                 with S3Object(self.config, media_id) as s3_object:
-                    if not s3_object.exists():
+                    if not s3_object.exists:
                         self.log.warning(
                             'File %s does not exist in S3', media_id)
                         continue
 
                     wmr_status = s3_object.metadata.get(
-                        'WMR_STATUS', 'UNKNOWN')
-                    if wmr_status != 'UNKNOWN':
+                        'wmr-status', 'UNKNOWN')
+                    if wmr_status == 'OPTIMIZED':
                         self.log.warning(
                             'File %s already processed: %s', media_id, wmr_status)
                         continue
 
+                    self.log.info('Content analysing file %s', media_id)
+                    if not s3_object.download():
+                        continue
+
+                    video_response = VideoAnalyzer(
+                        media_id, s3_object.filename())()
+                    if video_response:
+                        if not video_response.categories:
+                            self.log.warning(
+                                'No categories found for %s', media_id)
+                            continue
+                        content_metadata = video_response.categories.values()
+                    else:
+                        content_metadata = dict()
+
                     self.log.info('Processing video: %s', media_id)
 
-                    with VideoOptimizer(media_id, s3_object.filename) as video_optimizer:
+                    with VideoOptimizer(media_id, s3_object.filename()) as video_optimizer:
                         video_optimizer.run()
+                        metadata = s3_object.metadata
+                        metadata['wmr-status'] = 'OPTIMIZED'
+                        metadata['wmr-source'] = media_id
+                        for key in content_metadata:
+                            metadata['wmr-analisys-' +
+                                     key] = content_metadata[key]
                         if video_optimizer.new_file:
-                            metadata = s3_object.metadata
-                            metadata['WMR_STATUS'] = 'OPTIMIZED'
-                            metadata['WMR_SOURCE'] = media_id
                             with S3Object(self.config, video_optimizer.new_media_id()) as s3_object_new:
                                 if s3_object_new.upload(
                                         video_optimizer.new_file, **metadata):
                                     self.log.info(
-                                        'Successfully uploaded optimized video: %s', video_optimizer.new_media_id())
+                                        'Successfully uploaded optimized video: %s %s', video_optimizer.new_media_id(), metadata)
+                        else:
+                            with S3Object(self.config, media_id) as s3_object_update:
+                                if s3_object_update.upload(s3_object.filename(), **metadata):
+                                    self.log.info(
+                                        'Successfully updated video: %s %s', media_id, metadata)
 
-                    tmp_file = s3_object.get_temp_file()
-                    media_id, tmp_file, success = self.optimize_video(
-                        media_id, tmp_file)
-                    if success:
-                        self.log.info(
-                            'Uploading optimized video: %s', media_id)
-                        s3_object.upload_file(tmp_file)
-                        self.log.info('Uploaded optimized video: %s', media_id)
-                    else:
-                        self.log.info('Video not optimized: %s', media_id)
-
-                with tempfile.NamedTemporaryFile("w+", delete=True, prefix="video_process", suffix=media_id) as file:
-                    new_media_id, success = self.optimize_video(
-                        media_id, file.name)
+                            self.log.info(
+                                'Video already optimized: %s', media_id)
 
             except Empty:
                 ...
@@ -98,9 +110,14 @@ class VideoWorker:
         """Optimize video to webm, returning new media_id, new temporary file and success"""
         self.log.info('Processing video: %s', media_id)
         with tempfile.NamedTemporaryFile("w+", delete=False) as file:
+            with S3Object(self.config, media_id) as s3_object:
+                if not s3_object.download():
+                    self.log.error('Failed to download file %s', media_id)
+                    return '', '', False
+
+                s3_object.filename()
             if not self.s3_client.download_file(media_id, file.name):
-                self.log.error('Failed to download file %s', media_id)
-                return '', '', False
+                ...
             if not self.check_filetype_video(file.name):
                 return '', '', False
             self.log.info('Optimizing video: %s', media_id)

@@ -1,0 +1,7 @@
+[
+    {
+        "path": "/video",
+        "source_file": "video_accepted.content",
+        "status_code": 202
+    }
+]

@@ -1,15 +1,20 @@
-from urllib.parse import urlparse
-from pydantic import BaseModel
+import urllib.parse
+
+import pydantic
 
 
 class MediaRequestValidator:
 
-    def __init__(self, url: str, path_prefix: str = '/uploads'):
-        u = urlparse(url)
+    def __init__(self, url: str, ):
+        u = urllib.parse.urlparse(url)
         self.url = url
         self.bucket_name = u.netloc.split('.')[0]
         self.s3_host = f'{u.scheme}://{u.netloc}/'
-        self.media_id = u.path.replace(path_prefix, '')
+        paths = [p for p in u.path.split('/') if p]
+        self.media_id = '/'.join(paths[1:])
+        while self.media_id.startswith('/'):
+            self.media_id = self.media_id[1:]
+        self.media_id = self.media_id.replace('//', '/')
         if not(bool(u.scheme) and bool(u.netloc) and bool(self.bucket_name) and bool(self.media_id)):
             raise ValueError(f'Invalid url: {url}')
 
@@ -17,5 +22,6 @@ class MediaRequestValidator:
         return f'<MediaRequest {self.media_id}>'
 
 
-class MediaProcessRequest(BaseModel):
+class MediaProcessRequest(pydantic.BaseModel):
     url: str
+    post_id: int

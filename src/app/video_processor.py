@@ -31,7 +31,7 @@ class VideoProcessor(VideoProcessorAbstraction):
         self._repository = repository
         model_path = os.path.join(os.path.dirname(__file__), 'nsfw_model.h5')
         self._model = self._load_model(model_path)
-        self._log = logging.getLogger(__name__)
+        self._log = logging.getLogger(self.__class__.__name__)
 
     def process(self, video_id: str):
         filename = self._repository.get_video_file(video_id)
@@ -68,7 +68,7 @@ class VideoProcessor(VideoProcessorAbstraction):
                 process_time=time.time()-start_time)
 
         except Exception as exc:
-            logging.getLogger(__name__).error(
+            logging.getLogger(self.__class__.__name__).error(
                 'Process error %s %s', video_id, exc)
 
     def _extract_video_frames(self, video_file_name: str,

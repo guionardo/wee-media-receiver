@@ -5,27 +5,25 @@ import tempfile
 import time
 from typing import List, Union
 
-import cv2
-import tensorflow as tf
-import tensorflow_hub as hub
+import numpy as np
 from src.dto.get_video_response import GetVideoResponse
 from src.dto.video_categories import VideoCategory
 from tensorflow import keras
 
-models = [
-    module
-    for module in os.listdir(
-        os.path.join(os.path.dirname(__file__), 'models', '*'))]
+from .model_collection import ModelCollection
+from .video_capture import extract_video_frames
+
 
 IMAGE_DIM = 224   # required/default image dimensionality
 
 
-class ModelProcessor:
+class VideoAnalyzer:
     MODELS = {}
 
     def __init__(self, media_id: str, video_filename: str):
-        self._log = logging.getLogger(__name__)
-        self.model = self._load_model(models[0])
+        self.model_collection = ModelCollection()
+        self._log = logging.getLogger(self.__class__.__name__)
+        self.model = self.model_collection.get_model()
         self.media_id = media_id
         if not os.path.isfile(video_filename):
             raise FileNotFoundError(video_filename)
@@ -33,21 +31,6 @@ class ModelProcessor:
 
     def __call__(self, *args, **kwds) -> Union[GetVideoResponse, None]:
         return self.process(self.media_id, self.video_filename)
-
-    def _load_model(self, model_path: str):
-        model = self.MODELS.get(model_path)
-        if model:
-            return model
-        if model_path is None or not os.path.isfile(model_path):
-            raise ValueError(
-                "saved_model_path must be the valid directory of a saved model to load.")
-
-        model = tf.keras.models.load_model(
-            model_path,
-            custom_objects={'KerasLayer': hub.KerasLayer},
-            compile=False)
-        self.MODELS[model_path] = model
-        return model
 
     def process(self, media_id: str, video_filename: str) -> Union[GetVideoResponse, None]:
         """Process video file"""
@@ -57,7 +40,7 @@ class ModelProcessor:
         try:
             start_time = time.time()
             tmp = tempfile.mkdtemp(suffix='vp')
-            frames = self._extract_video_frames(video_filename, 20, tmp)
+            frames = extract_video_frames(video_filename, 20, tmp)
             prediction = self._predict(frames)
             shutil.rmtree(tmp)
 
@@ -76,36 +59,6 @@ class ModelProcessor:
             )
 
         return video_data
-
-    def _extract_video_frames(self, video_file_name: str,
-                              n_frames: int, destiny_folder: str) -> List[str]:
-        """Extract frames from video and saves into destiny folder
-        Returns list of files for each frame"""
-        video_file_name = os.path.abspath(video_file_name)
-        if not os.path.isfile(video_file_name):
-            raise FileNotFoundError(video_file_name)
-        if not os.path.isdir(destiny_folder):
-            raise FileNotFoundError(destiny_folder)
-
-        vidcap = cv2.VideoCapture(video_file_name)
-        skip = int(vidcap.get(cv2.CAP_PROP_FRAME_COUNT)/n_frames)
-        frame = 0
-
-        success = True
-        files = []
-        while success:
-            vidcap.set(cv2.CAP_PROP_POS_FRAMES, frame*skip)
-            frame += 1
-            success, image = vidcap.read()
-            if success:
-                frame_file_name = os.path.join(
-                    destiny_folder, f'frame_{frame:03}.jpg')
-                if cv2.imwrite(frame_file_name, image):
-                    files.append(frame_file_name)
-            if frame >= n_frames:
-                success = False
-
-        return files
 
     def _predict(self, files: List[str]):
         image_preds = self._classify(files, IMAGE_DIM)
@@ -153,7 +106,7 @@ class ModelProcessor:
     def _classify_nd(self, nd_images):
         """ Classify given a model, image array (numpy)...."""
 
-        model_preds = self._model.predict(nd_images)
+        model_preds = self.model.predict(nd_images)
 
         categories = ['drawings', 'hentai', 'neutral', 'porn', 'sexy']
 

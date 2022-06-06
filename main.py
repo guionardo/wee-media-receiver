@@ -8,6 +8,11 @@ from fastapi import (BackgroundTasks, FastAPI, Request, Response, UploadFile,
 from fastapi.middleware.cors import CORSMiddleware
 
 from src import __appname__, __description__, __version__
+from src.app.jobs.analysis_job import AnalysisJob
+from src.app.jobs.optimize_job import OptimizeJob
+from src.app.jobs.receive_video_job import ReceiveVideoJob
+from src.app.jobs.upload_job import UploadJob
+from src.app.schedule.schedule_worker import ScheduleWorker
 from src.app.service import MediaReceiverService
 from src.app.video_worker import VideoWorker
 from src.config.config import Config
@@ -18,7 +23,9 @@ from src.dto.media_status_response import MediaStatusResponse
 from src.dto.video_receive_response import VideoReceiveResponse
 from src.logging.custom_logging import CustomizeLogger
 from src.middlewares.limit_upload_size import LimitUploadSize
-from src.repositories.s3_repository import S3Client
+from src.app.jobs.video_job import VideoJob
+from src.app.jobs.notify_job import NotifyJob
+from src.app.jobs.renotify_job import RenotifyJob
 
 load_dotenv()
 config = Config()
@@ -26,7 +33,7 @@ config = Config()
 app_config = dict(
     title=__description__,
     debug=True,
-    version="0.0.1",
+    version=__version__,
 )
 
 app = FastAPI(**app_config)
@@ -43,23 +50,34 @@ if config.cors_origins:
         allow_headers=["*"],
     )
 
-worker = VideoWorker(config, S3Client(config))
+scheduler = ScheduleWorker(config)
+scheduler.add_job(ReceiveVideoJob())
+scheduler.add_job(NotifyJob())
+scheduler.add_job(AnalysisJob())
+scheduler.add_job(OptimizeJob())
+scheduler.add_job(UploadJob())
+scheduler.add_job(RenotifyJob())
+
+
+worker = VideoWorker(config)
 service = MediaReceiverService(config)
 
 
 @app.on_event("startup")
 async def startup():
-    worker.start()
+    scheduler.start()
+    # worker.start()
 
 
 @app.on_event("shutdown")
 async def shutdown():
-    worker.stop()
+    scheduler.stop()
+    # worker.stop()
 
 
 @app.get("/")
 async def root():
-    return {"message": "Hello World"}
+    return app_config
 
 
 # @app.post('/media/{media_type}/{media_id}', response_model=MediaStatusResponse)
@@ -92,7 +110,7 @@ async def process_video(media_request: MediaProcessRequest, response: Response):
         response.status_code = status.HTTP_400_BAD_REQUEST
         return VideoReceiveResponse(media_id=media_id, status=MediaStatusEnum.Rejected, message='Invalid S3 bucket')
 
-    if not service.register_process_video(media_id):
+    if not service.register_process_video(media_id, media_request.post_id):
         response.status_code = status.HTTP_404_NOT_FOUND
         return VideoReceiveResponse(media_id=media_id, message="NOT FOUND")
     return VideoReceiveResponse(media_id=media_id, message="ACCEPTED")

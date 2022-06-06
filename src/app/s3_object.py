@@ -12,21 +12,22 @@ from src.config.config import Config
 
 class S3Object:
 
-    def __init__(self, config: Config, key: str):
+    def __init__(self, config: Config, key: str, keep_file: bool = False):
         self.config = config
         self.key = key
-        self.log = logging.getLogger(__name__)
+        self.log = logging.getLogger(self.__class__.__name__)
         self.client = boto3.client('s3', **self.config.s3_to_dict())
         self.bucket = boto3.resource(
             's3', **self.config.s3_to_dict()).Bucket(self.config.bucket_name)
 
         self.log.info('S3Object(%s:%s) initialized',
                       self.config.bucket_name, key)
-        self.file = tempfile.NamedTemporaryFile('w+', prefix=key, delete=True)
+
         self.metadata = {}
         self.last_modified = datetime.datetime(1, 1, 1)
         self.downloaded = False
         self.public_url = ''
+        self._keep = keep_file
 
     def filename(self) -> str:
         if self.downloaded:
@@ -34,6 +35,8 @@ class S3Object:
 
     def __enter__(self):
         try:
+            self.file = tempfile.NamedTemporaryFile(
+                'w+', prefix=os.path.basename(self.key), delete=not self._keep)
             obj = self.bucket.Object(self.key)
             obj.load()
             self.exists = True
@@ -52,6 +55,8 @@ class S3Object:
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
+        if exc_type:
+            self.log.error('Exiting with exception: %s', exc_val)
         self.file.close()
 
     def download(self) -> bool:
@@ -110,12 +115,13 @@ class S3Object:
 
     def set_metadata(self, media_id: str, metadata: dict) -> bool:
         try:
-            obj = self.bucket.Object(media_id)
+            s3 = boto3.resource('s3', **self.config.s3_to_dict())
+            obj = s3.Object(self.config.bucket_name, media_id)
             obj.metadata.update(metadata)
-            obj.copy_from(
-                CopySource=dict(Bucket=self.config.bucket_name, Key=media_id),
-                Metadata=obj.metadata,
-                MetadataDirective='REPLACE')
+            obj.copy_from(CopySource={'Bucket': self.config.bucket_name, 'Key': media_id},
+                          Metadata=obj.metadata,
+                          MetadataDirective='REPLACE')
+
             self.metadata = metadata
             self.log.info('Metadata updated: #%s = %s', media_id, metadata)
             return True

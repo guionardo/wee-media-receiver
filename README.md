@@ -133,3 +133,15 @@ Processamento
   4. Upload do novo vídeo para o S3
   5. Notificação para o site bomperfil sobre o processo terminado do vídeo, com o novo nome de arquivo e as tags
   6. Com o aceite do bomperfil, exclui o arquivo anterior do S3
+
+
+## Glossário
+
+| NAME              | TYPE | EXAMPLE                                                                                  |
+|-------------------|------|------------------------------------------------------------------------------------------|
+| MEDIA_URL         | str  | https://teste-videos.us-east-1.linodeobjects.com/teste-videos/uploads/2022/06/test_2.mp4 |
+| MEDIA_ID          | str  | uploads/2022/06/test.mp4                                                                 |
+| POST_ID           | int  | 1234                                                                                     |
+| NEW_MEDIA_ID      | str  | uploads/2022/06/test.webm                                                                |
+| LOCAL_FILENAME    | str  | /tmp/filexxxx                                                                            |
+| LOCAL_NEWFILENAME | str  | /tmp/fileYYYY                                                                            |

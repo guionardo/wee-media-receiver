@@ -13,3 +13,6 @@ class GetVideoResponse(BaseModel):
     categories: Optional[VideoCategory]
     message: Optional[str]
     processing_time: Optional[float]
+
+    def __str__(self) -> str:
+        return f'{self.video_id} [{self.message}] ({self.processing_time}s): {self.categories}'

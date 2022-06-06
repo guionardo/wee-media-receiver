@@ -15,17 +15,17 @@ from ffmpeg import FFmpeg
 
 class VideoOptimizer:
 
-    def __init__(self, media_id: str, filename: str):
+    def __init__(self, media_id: str, filename: str, keep_temp: bool = False):
         if not os.path.isfile(filename):
             raise FileNotFoundError(filename)
         self.media_id = media_id
         self.filename = filename
-        self.log = logging.getLogger(__name__)
+        self.log = logging.getLogger(self.__class__.__name__)
 
         self.output = tempfile.NamedTemporaryFile(
             suffix='.output.webm',
             prefix=os.path.basename(filename),
-            delete=True)
+            delete=not keep_temp)
 
         self.new_file = ''
         self.message = ''
@@ -35,6 +35,8 @@ class VideoOptimizer:
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
+        if exc_val:
+            self.log.error('Exit with error: %s', exc_val)
         self.output.close()
 
     def __str__(self):
@@ -51,18 +53,18 @@ class VideoOptimizer:
             # same extension, optimized
             return os.path.join(current_root+'.optimized', new_ext)
 
-        return os.path.join(current_root, current_ext+new_ext)
+        return current_root + current_ext + new_ext
 
     def run(self):
         try:
-            start_time = time.time()
+            start_time = time()
 
             async def run():
                 await self._create_ffmpeg(1).execute()
                 await self._create_ffmpeg(2).execute()
             asyncio.run(run())
             self.elapsed_time = datetime.timedelta(
-                seconds=time.time()-start_time)
+                seconds=time()-start_time)
 
             source_len = os.path.getsize(self.filename)
             output_len = os.path.getsize(self.output.name)

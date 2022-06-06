@@ -12,6 +12,11 @@ loguru = "*"
 starlette = "*"
 filetype = "*"
 python-ffmpeg = "*"
+tensorflow = "*"
+tensorflow-hub = "*"
+pillow = "*"
+opencv-python-headless = "*"
+numpy = "*"
 
 [dev-packages]
 autopep8 = "*"
@@ -22,3 +27,6 @@ pytest = "*"
 
 [requires]
 python_version = "3.8"
+
+[packages.urllib3]
+extras = [ "secure",]

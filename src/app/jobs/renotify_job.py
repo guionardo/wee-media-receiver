@@ -1,0 +1,48 @@
+import datetime
+import logging
+import os
+
+from src.app.backend_api import BackendAPI
+from src.app.schedule.schedule_worker import Job, ScheduleContext
+from src.domain.media_data import MediaData
+from src.dto.media_notification import MediaNotification
+from src.dto.media_status_enum import MediaStatusEnum
+from src.repositories.media_repository import MediaRepository
+
+
+class RenotifyJob(Job):
+
+    def __init__(self):
+        self.log = logging.getLogger(self.__class__.__name__)
+        self.last_run = datetime.datetime(1970, 1, 1)
+
+    def can_process(self, event) -> bool:
+        return event.get('type', '') == 'renotify'
+
+    def do_process(self, event, context: ScheduleContext) -> bool:
+        if self.last_run + self.interval() > datetime.datetime.now():
+            return True
+        self.last_run = datetime.datetime.now()
+        api = BackendAPI(context.config)
+        if not api.is_available():
+            return False
+
+        unnotified = context.repository.get_unnotified_media(5)
+        if not unnotified:
+            return True
+
+        for media in unnotified:
+            notification = MediaNotification(
+                media.media_id, media.new_media_id, 'PROCESSED', media.post_id, media.category)
+            media.notification_sent += 1
+            if api.notify_backend(notification):
+                # backend accepted the notification
+                media.status = MediaStatusEnum.Notified
+                media.notification_accepted += 1
+
+            context.repository.set_media(media)
+
+        return True
+
+    def interval(self) -> datetime.timedelta:
+        return datetime.timedelta(seconds=10)

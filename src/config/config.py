@@ -18,8 +18,15 @@ class Config:
         self.endpoint_url = self._getenv('S3_ENDPOINT_URL')
         if not self.endpoint_url.endswith('/'):
             self.endpoint_url += '/'
+        self.endpoint_path_prefix = self._getenv(
+            'S3_ENDPOINT_PATH_PREFIX', 'uploads/')
+        if self.endpoint_path_prefix and not self.endpoint_path_prefix.endswith('/'):
+            self.endpoint_path_prefix += '/'
+
         # Website notification
         self.backend_url = self._getenv('BACKEND_URL', '')
+        self.backend_auth = self._getenv('BACKEND_AUTH', '')
+
         # Database
         self.db_connectionstring = self._getenv('DB_CONNECTIONSTRING', '')
 
@@ -28,6 +35,10 @@ class Config:
 
         # CORS
         self.cors_origins = self._getenv('CORS_ORIGINS', '*').split(',')
+
+        # Local Repository
+        self.local_db = self._getenv(
+            'LOCAL_DB', './wee-media-receiver.db')
 
     def s3_to_dict(self) -> dict:
         return dict(

@@ -1,5 +1,6 @@
 """Main entry"""
 
+import sys
 from pathlib import Path
 
 import uvicorn
@@ -9,12 +10,14 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from src import __appname__, __description__, __version__
 from src.app.jobs.analysis_job import AnalysisJob
+from src.app.jobs.notify_job import NotifyJob
 from src.app.jobs.optimize_job import OptimizeJob
 from src.app.jobs.receive_video_job import ReceiveVideoJob
+from src.app.jobs.renotify_job import RenotifyJob
 from src.app.jobs.upload_job import UploadJob
 from src.app.schedule.schedule_worker import ScheduleWorker
 from src.app.service import MediaReceiverService
-from src.app.video_worker import VideoWorker
+from src.app.stop_control import StopControl
 from src.config.config import Config
 from src.config.dotenv import load_dotenv
 from src.dto.media_request import MediaProcessRequest, MediaRequestValidator
@@ -23,9 +26,8 @@ from src.dto.media_status_response import MediaStatusResponse
 from src.dto.video_receive_response import VideoReceiveResponse
 from src.logging.custom_logging import CustomizeLogger
 from src.middlewares.limit_upload_size import LimitUploadSize
-from src.app.jobs.video_job import VideoJob
-from src.app.jobs.notify_job import NotifyJob
-from src.app.jobs.renotify_job import RenotifyJob
+
+stop_control = StopControl()
 
 load_dotenv()
 config = Config()
@@ -50,7 +52,7 @@ if config.cors_origins:
         allow_headers=["*"],
     )
 
-scheduler = ScheduleWorker(config)
+scheduler = ScheduleWorker(config, stop_control)
 scheduler.add_job(ReceiveVideoJob())
 scheduler.add_job(NotifyJob())
 scheduler.add_job(AnalysisJob())
@@ -59,20 +61,25 @@ scheduler.add_job(UploadJob())
 scheduler.add_job(RenotifyJob())
 
 
-worker = VideoWorker(config)
-service = MediaReceiverService(config)
+service = MediaReceiverService(config, stop_control=stop_control)
 
 
 @app.on_event("startup")
 async def startup():
+    # if 'stop' in sys.argv:
+    #     stop_control.stop()
+    #     exit(0)
+    # if not stop_control.can_start():        
+    #     app.logger.error('Cannot start the server. Instance already running.')
+    #     exit(1)
+    
     scheduler.start()
-    # worker.start()
 
 
 @app.on_event("shutdown")
 async def shutdown():
     scheduler.stop()
-    # worker.stop()
+    # del(stop_control)
 
 
 @app.get("/")
@@ -117,4 +124,11 @@ async def process_video(media_request: MediaProcessRequest, response: Response):
 
 
 if __name__ == '__main__':
+    if 'stop' in sys.argv:
+        stop_control.stop()
+        exit(0)
+    if not stop_control.can_start():
+        app.logger.error('Cannot start the server. Instance already running.')
+        exit(1)
     uvicorn.run(app, host='0.0.0.0', port=8000)
+    del(stop_control)

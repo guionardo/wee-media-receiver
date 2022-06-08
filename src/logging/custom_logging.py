@@ -2,6 +2,7 @@
 
 import json
 import logging
+import os
 import sys
 from pathlib import Path
 
@@ -43,9 +44,10 @@ class CustomizeLogger:
 
         config = cls.load_logging_config(config_path)
         logging_config = config.get('logger')
-
+        os.makedirs(logging_config.get('path'), exist_ok=True)
         logger = cls.customize_logging(
-            logging_config.get('path'),
+            os.path.join(logging_config.get('path'),
+                         logging_config.get('filename')),
             level=logging_config.get('level'),
             retention=logging_config.get('retention'),
             rotation=logging_config.get('rotation'),

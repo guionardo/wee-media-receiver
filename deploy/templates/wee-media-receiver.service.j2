@@ -1,0 +1,14 @@
+[Unit]
+Description=Wee Media Receiver
+After=network.target
+StartLimitIntervalSec=0
+
+[Service]
+Type=simple
+Restart=always
+RestartSec=1
+User={{api_user}}
+ExecStart=/usr/bin/env bash {{ api_source }}/run_api.sh
+
+[Install]
+WantedBy=multi-user.target

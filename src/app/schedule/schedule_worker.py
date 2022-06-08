@@ -4,6 +4,7 @@ import threading
 from queue import Empty, Queue
 from typing import List, Protocol
 
+from src.app.stop_control import StopControl
 from src.config.config import Config
 from src.repositories.media_repository import MediaRepository
 
@@ -40,11 +41,12 @@ class JobItem:
 
 class ScheduleWorker:
 
-    def __init__(self, config: Config):
+    def __init__(self, config: Config, stop_control: StopControl):
         self.jobs: List[JobItem] = []
         self._last_run = -1
         self._can_run = False
         self.config = config
+        self.stop_control = stop_control
         self.log = logging.getLogger(self.__class__.__name__)
 
     def add_job(self, job: Job):
@@ -74,12 +76,15 @@ class ScheduleWorker:
                     self.log.warning('No job found for event %s', event)
                     continue
                 job = job_item.job
-                self.log.info('Received event %s for job %s',
-                              event, job.__class__.__name__)
+                log_event = event.get('type', '') != 'renotify'
+                if log_event:
+                    self.log.info('Received event %s for job %s',
+                                  event, job.__class__.__name__)
 
                 if job.do_process(event, ctx):
-                    self.log.info('Job %s processed event %s',
-                                  job.__class__.__name__, event)
+                    if log_event:
+                        self.log.info('Job %s processed event %s',
+                                      job.__class__.__name__, event)
                 else:
                     self.log.info('Job %s did not process event %s',
                                   job.__class__.__name__, event)
@@ -88,7 +93,10 @@ class ScheduleWorker:
                 continue
             except Exception as exc:
                 self.log.error('Error processing event %s: %s', event, exc)
+            if self.stop_control.stopping:
+                self.stop()
         self.log.info('SchedulerWorker stopped')
+        exit(0)
 
     def start(self):
         if not self.jobs:

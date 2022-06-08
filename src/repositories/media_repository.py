@@ -20,7 +20,7 @@ class MediaRepository:
             self.lock.acquire()
             self.conn = sqlite3.connect(local_db)
             self.conn.executescript(MediaData.CREATE_TABLE_SQL)
-            self.log.info('MediaRepository initialized')
+            self.log.info('MediaRepository initialized: %s', local_db)
         except Exception as exc:
             self.log.error('Failed to initialize MediaRepository: %s', exc)
             raise

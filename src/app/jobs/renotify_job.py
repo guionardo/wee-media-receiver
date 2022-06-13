@@ -1,23 +1,19 @@
 import datetime
 import logging
-import os
 
 from src.app.backend_api import BackendAPI
+from src.app.jobs import JobName
 from src.app.schedule.schedule_worker import Job, ScheduleContext
-from src.domain.media_data import MediaData
 from src.dto.media_notification import MediaNotification
 from src.dto.media_status_enum import MediaStatusEnum
-from src.repositories.media_repository import MediaRepository
 
 
 class RenotifyJob(Job):
 
     def __init__(self):
+        self._setup(JobName.Renotify.value)
         self.log = logging.getLogger(self.__class__.__name__)
         self.last_run = datetime.datetime(1970, 1, 1)
-
-    def can_process(self, event) -> bool:
-        return event.get('type', '') == 'renotify'
 
     def do_process(self, event, context: ScheduleContext) -> bool:
         if self.last_run + self.interval() > datetime.datetime.now():
@@ -39,6 +35,8 @@ class RenotifyJob(Job):
                 # backend accepted the notification
                 media.status = MediaStatusEnum.Notified
                 media.notification_accepted += 1
+                context.schedule.publish_event(
+                    JobName.RemoveVideo.value, media_id=notification.media_id)
 
             context.repository.set_media(media)
 
@@ -46,3 +44,6 @@ class RenotifyJob(Job):
 
     def interval(self) -> datetime.timedelta:
         return datetime.timedelta(seconds=10)
+
+    def can_log(self) -> bool:
+        return False

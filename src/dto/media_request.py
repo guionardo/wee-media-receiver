@@ -15,7 +15,10 @@ class MediaRequestValidator:
         while self.media_id.startswith('/'):
             self.media_id = self.media_id[1:]
         self.media_id = self.media_id.replace('//', '/')
-        if not(bool(u.scheme) and bool(u.netloc) and bool(self.bucket_name) and bool(self.media_id)):
+        if (not(bool(u.scheme) and
+                bool(u.netloc) and
+            bool(self.bucket_name) and
+                bool(self.media_id))):
             raise ValueError(f'Invalid url: {url}')
 
     def __repr__(self) -> str:

@@ -2,6 +2,7 @@ import datetime
 import logging
 
 from src.analysis.model_processor import VideoAnalyzer
+from src.app.jobs import JobName
 from src.app.schedule.schedule_worker import Job, ScheduleContext
 from src.domain.media_data import MediaData
 from src.dto.media_status_enum import MediaStatusEnum
@@ -10,16 +11,13 @@ from src.dto.media_status_enum import MediaStatusEnum
 class AnalysisJob(Job):
 
     def __init__(self):
+        self._setup(JobName.Analysis.value, 'filename',
+                    'media_id', 'post_id', 'metadata')
         self.log = logging.getLogger(self.__class__.__name__)
 
-    def can_process(self, event) -> bool:
-        return event.get('type', '') == 'analyze' and event.get('filename') and event.get('media_id') and event.get('post_id') and event.get('metadata')
-
     def do_process(self, event, context: ScheduleContext) -> bool:
-        filename, media_id, post_id, metadata = self.get_event_fields(
-            event, 'filename', 'media_id', 'post_id', 'metadata')
-        # filename, media_id, post_id, metadata = event.get('filename'), event.get(
-        #     'media_id'), event.get('post_id'), event.get('metadata')
+        filename, media_id, post_id, metadata = self.get_event_fields(event)
+
         context.repository.set_media(MediaData(
             post_id=post_id,
             media_id=media_id,
@@ -42,7 +40,7 @@ class AnalysisJob(Job):
             category=content_metadata,
             status=MediaStatusEnum.Analysed))
 
-        context.schedule.publish_event('optimize', filename=filename, media_id=media_id,
+        context.schedule.publish_event(JobName.Optimize.value, filename=filename, media_id=media_id,
                                        post_id=post_id, metadata=metadata, content_metadata=content_metadata)
 
         return True

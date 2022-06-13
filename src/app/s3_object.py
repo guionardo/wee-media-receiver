@@ -77,6 +77,20 @@ class S3Object:
             self.log.error('Error downloading object %s: %s', self.key, e)
             return False
 
+    def delete(self) -> bool:
+        if not self.exists:
+            return True
+
+        try:
+            self.log.info('Deleting %s:%s', self.config.bucket_name, self.key)
+            self.client.delete_object(
+                Bucket=self.config.bucket_name, Key=self.key)
+            self.log.info('Deleted object %s:%s',
+                          self.config.bucket_name, self.key)
+            return True
+        except Exception as exc:
+            self.log.error('Error deleting object %s: %s', self.key, exc)
+
     def upload(self, filename: str, content_type: str = None, **metadata) -> bool:
         if not os.path.isfile(filename):
             return False

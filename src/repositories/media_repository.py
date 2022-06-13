@@ -1,10 +1,12 @@
 import logging
 import sqlite3
 import threading
-from typing import List
+from typing import Dict, List
 
 from src.config.config import Config
 from src.domain.media_data import MediaData
+
+singleton_repository = None
 
 
 class MediaRepository:
@@ -35,11 +37,24 @@ class MediaRepository:
             row = self.conn.execute(sql, (media_id,)).fetchone()
             if row:
                 result = MediaData(row)
-            # for row in self.conn.execute('SELECT media_id,creation_date,media_path,new_media_path,category,notification_sent,notification_accepted FROM media WHERE media_id = :media_id', dict(media_id=media_id)):
-            #     result = MediaData(row)
-            #     break
+
         except Exception as exc:
             self.log.error('Failed to get media %s: %s', media_id, exc)
+        finally:
+            self.lock.release()
+        return result
+
+    def get_media_by_postid(self, post_id: int) -> MediaData:
+        result: MediaData = None
+        try:
+            self.lock.acquire()
+            sql = f'SELECT {MediaData.field_names_sql()} FROM media WHERE post_id = ?'
+            row = self.conn.execute(sql, (post_id,)).fetchone()
+            if row:
+                result = MediaData(row)
+
+        except Exception as exc:
+            self.log.error('Failed to get media %s: %s', post_id, exc)
         finally:
             self.lock.release()
         return result
@@ -76,3 +91,37 @@ class MediaRepository:
         finally:
             self.lock.release()
         return result
+
+    def delete_media(self, media_id: str) -> bool:
+        result: bool = False
+        try:
+            self.lock.acquire()
+            sql = 'DELETE FROM media WHERE media_id = ?'
+            self.conn.execute(sql, (media_id,))
+            self.conn.commit()
+            result = True
+        except Exception as exc:
+            self.log.error('Failed to delete media %s: %s', media_id, exc)
+        finally:
+            self.lock.release()
+        return result
+
+    def get_media_status_count(self) -> Dict[str, int]:
+        result = {}
+        try:
+            self.lock.acquire()
+            sql = 'SELECT status, count(*) FROM media GROUP BY status'
+            result = dict(self.conn.execute(sql).fetchall())
+        except Exception as exc:
+            self.log.error('Failed to get media status count: %s', exc)
+        finally:
+            self.lock.release()
+        return result
+
+
+def get_repository(config: Config) -> MediaRepository:
+    global singleton_repository
+    if not singleton_repository:
+        singleton_repository = MediaRepository(config)
+
+    return singleton_repository

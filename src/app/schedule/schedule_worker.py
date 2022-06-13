@@ -4,7 +4,7 @@ import threading
 from queue import Empty, Queue
 from typing import List, Protocol
 
-from src.app.stop_control import StopControl
+from src.app.jobs import JobName
 from src.config.config import Config
 from src.repositories.media_repository import MediaRepository
 
@@ -13,14 +13,32 @@ q = Queue()  # Queue of JobItems
 
 class Job(Protocol):
 
+    _type: str
+    _field_names: List[str]
+
+    def _setup(self, type: str, *field_names):
+        self._type = type
+        self._field_names = field_names
+
+    def _valid_event(self, event):
+        return (
+            event.get('type', None) == self._type and
+            all(self.get_event_fields(event, *self._field_names)))
+
+    def get_event_fields(self, event) -> list:
+        return [event.get(field_name, None) for field_name in self._field_names]
+
+    def can_log(self) -> bool:
+        return True
+
     def can_process(self, event) -> bool:
-        ...
+        return (
+            event.get('type', None) == self._type and
+            (not self._field_names or
+             all(self.get_event_fields(event, *self._field_names))))
 
     def do_process(self, event, context) -> bool:
         ...
-
-    def get_event_fields(self, event, *field_names) -> list:
-        return [event.get(field_name, None) for field_name in field_names]
 
     def interval(self) -> datetime.timedelta:
         ...
@@ -41,12 +59,11 @@ class JobItem:
 
 class ScheduleWorker:
 
-    def __init__(self, config: Config, stop_control: StopControl):
+    def __init__(self, config: Config):
         self.jobs: List[JobItem] = []
         self._last_run = -1
         self._can_run = False
         self.config = config
-        self.stop_control = stop_control
         self.log = logging.getLogger(self.__class__.__name__)
 
     def add_job(self, job: Job):
@@ -76,25 +93,24 @@ class ScheduleWorker:
                     self.log.warning('No job found for event %s', event)
                     continue
                 job = job_item.job
-                log_event = event.get('type', '') != 'renotify'
-                if log_event:
+
+                if job.can_log():
                     self.log.info('Received event %s for job %s',
                                   event, job.__class__.__name__)
 
                 if job.do_process(event, ctx):
-                    if log_event:
+                    if job.can_log():
                         self.log.info('Job %s processed event %s',
                                       job.__class__.__name__, event)
                 else:
                     self.log.info('Job %s did not process event %s',
                                   job.__class__.__name__, event)
             except Empty:
-                queue.put({'type': 'renotify'}, block=True)
+                queue.put({'type': JobName.Renotify.value}, block=True)
                 continue
             except Exception as exc:
                 self.log.error('Error processing event %s: %s', event, exc)
-            if self.stop_control.stopping:
-                self.stop()
+
         self.log.info('SchedulerWorker stopped')
         exit(0)
 

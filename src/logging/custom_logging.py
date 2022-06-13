@@ -63,7 +63,7 @@ class CustomizeLogger:
                           retention: str,
                           format: str
                           ):
-
+        
         logger.remove()
         logger.add(
             sys.stdout,
@@ -85,6 +85,8 @@ class CustomizeLogger:
         logging.getLogger("uvicorn.access").handlers = [InterceptHandler()]
         for _log in ['uvicorn',
                      'uvicorn.error',
+                     'uvicorn.server',
+                     'uvicorn.lifespan.on',
                      'fastapi'
                      ]:
             _logger = logging.getLogger(_log)

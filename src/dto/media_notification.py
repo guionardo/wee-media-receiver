@@ -3,7 +3,8 @@ class MediaNotification:
 
     __slots__ = ('media_id', 'new_media_id', 'status', 'post_id', 'metadata')
 
-    def __init__(self, media_id: str, new_media_id: str, status: str, post_id: int, metadata: dict):
+    def __init__(self, media_id: str, new_media_id: str,
+                 status: str, post_id: int, metadata: dict):
         self.media_id = media_id
         self.new_media_id = new_media_id
         self.status = status
@@ -11,7 +12,7 @@ class MediaNotification:
         if not isinstance(metadata, dict):
             metadata = {}
         self.metadata = {
-            k.lower().replace('_', '-'): v
+            k.lower().replace('_', '-'): round(float(v), 3)
             for k, v in metadata.items()
         }
 

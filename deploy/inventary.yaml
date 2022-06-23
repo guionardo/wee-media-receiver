@@ -1,0 +1,4 @@
+all:
+  hosts:
+    wee:
+      ansible_host: 69.164.198.25

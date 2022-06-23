@@ -2,6 +2,7 @@
 
 import json
 import logging
+import os
 import sys
 from pathlib import Path
 
@@ -21,8 +22,8 @@ class InterceptHandler(logging.Handler):
     def emit(self, record):
         try:
             level = logger.level(record.levelname).name
-        except AttributeError:
-            level = self.loglevel_mapping[record.levelno]
+        except Exception:
+            level = self.loglevel_mapping.get(record.levelno, 'DEBUG')
 
         frame, depth = logging.currentframe(), 2
         while frame.f_code.co_filename == logging.__file__:
@@ -43,9 +44,10 @@ class CustomizeLogger:
 
         config = cls.load_logging_config(config_path)
         logging_config = config.get('logger')
-
+        os.makedirs(logging_config.get('path'), exist_ok=True)
         logger = cls.customize_logging(
-            logging_config.get('path'),
+            os.path.join(logging_config.get('path'),
+                         logging_config.get('filename')),
             level=logging_config.get('level'),
             retention=logging_config.get('retention'),
             rotation=logging_config.get('rotation'),
@@ -61,7 +63,7 @@ class CustomizeLogger:
                           retention: str,
                           format: str
                           ):
-
+        
         logger.remove()
         logger.add(
             sys.stdout,
@@ -83,6 +85,8 @@ class CustomizeLogger:
         logging.getLogger("uvicorn.access").handlers = [InterceptHandler()]
         for _log in ['uvicorn',
                      'uvicorn.error',
+                     'uvicorn.server',
+                     'uvicorn.lifespan.on',
                      'fastapi'
                      ]:
             _logger = logging.getLogger(_log)

@@ -5,7 +5,7 @@ import os
 class BaseConfig:
 
     def __init__(self, source: dict = os.environ):
-        self.log = logging.getLogger(__name__)
+        self.log = logging.getLogger(self.__class__.__name__)
         self._source = source
         self.setup()
         self.log.info('BaseConfig initialized')

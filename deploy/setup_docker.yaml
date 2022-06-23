@@ -1,0 +1,57 @@
+---
+- name: Docker
+  hosts: wee
+  become: true
+  remote_user: root
+
+  tasks:
+    - name: Install required system packages
+      apt:
+        pkg:
+          - aptitude
+          - apt-transport-https
+          - ca-certificates
+          - curl
+          - software-properties-common
+          - python3-venv
+          - python3-pip
+          - virtualenv
+          - python3-setuptools
+          - gnupg
+          - lsb-release
+          - jq
+          - skopeo
+          - rsync
+          - ffmpeg
+          - nginx
+        state: latest
+        update_cache: true
+
+    - name: Add Docker GPG apt Key
+      apt_key:
+        url: https://download.docker.com/linux/debian/gpg
+        state: present
+
+    - name: Get Linux version
+      shell: lsb_release -cs
+      register: lsb_release
+
+    - name: Show Linux version
+      debug: msg="{{ lsb_release.stdout }}"
+
+    - name: Add Docker Repository
+      apt_repository:
+        repo: deb https://download.docker.com/linux/debian {{ lsb_release.stdout }} stable
+        state: present
+
+    - name: Install docker and docker-compose
+      apt:
+        pkg:
+          - docker-ce
+          - docker-compose
+        state: latest
+        update_cache: true
+
+    - name: Install Docker Module for Python
+      pip:
+        name: docker

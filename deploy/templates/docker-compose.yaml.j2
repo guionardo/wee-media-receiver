@@ -1,0 +1,15 @@
+version: "3.5"
+
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    env_file: .env
+    restart: unless-stopped
+
+    ports:
+      - "8000:8000"
+
+    volumes:      
+      - "{{api_source}}/data:/api/data"

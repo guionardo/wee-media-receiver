@@ -29,6 +29,13 @@
         delete: yes
         recursive: yes
 
+    - name: Synchronize static files
+      synchronize:
+        src: ../static
+        dest: "{{api_source}}"
+        delete: yes
+        recursive: yes
+
     - name: Synchronize nginx files
       synchronize:
         src: ./nginx/

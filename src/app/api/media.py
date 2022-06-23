@@ -7,7 +7,7 @@ from src.dto.media_status_enum import MediaStatusEnum
 from src.dto.media_status_response import MediaStatusResponse
 from src.dto.video_receive_response import VideoReceiveResponse
 
-router = APIRouter(prefix='/media', tags=['media'])
+router = APIRouter(prefix='/media', tags=['Media'])
 config = get_config()
 
 

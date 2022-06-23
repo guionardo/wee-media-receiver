@@ -35,12 +35,14 @@ class RenotifyJob(Job):
                 # backend accepted the notification
                 media.status = MediaStatusEnum.Notified
                 media.notification_accepted += 1
-                context.schedule.publish_event(
-                    JobName.RemoveVideo.value, media_id=notification.media_id)
+                if media.new_media_id != media.media_id:
+                    context.schedule.publish_event(
+                        JobName.RemoveVideo.value,
+                        media_id=notification.media_id)
 
             context.repository.set_media(media)
 
-        return True
+            return True
 
     def interval(self) -> datetime.timedelta:
         return datetime.timedelta(seconds=10)

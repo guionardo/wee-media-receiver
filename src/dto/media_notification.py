@@ -11,10 +11,17 @@ class MediaNotification:
         self.post_id = post_id
         if not isinstance(metadata, dict):
             metadata = {}
-        self.metadata = {
-            k.lower().replace('_', '-'): round(float(v), 3)
-            for k, v in metadata.items()
-        }
+        new_metadata = {}
+        for k, v in metadata.items():
+            k = k.lower().replace('_', '-')
+            try:
+                v = round(float(v), 3)
+            except:
+                ...
+            finally:
+                new_metadata[k] = v
+
+        self.metadata = new_metadata
 
     def as_dict(self) -> dict:
         return dict(

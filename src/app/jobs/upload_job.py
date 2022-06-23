@@ -36,20 +36,21 @@ class UploadJob(Job):
 
         if new_filename:
             with S3Object(context.config, new_media_id) as s3_object_new:
-                if s3_object_new.upload(
+                if not s3_object_new.upload(
                         new_filename, **metadata):
-                    self.log.info('Successfully uploaded optimized video: %s %s',
-                                  new_media_id, metadata)
-
-                else:
                     return False
+                self.log.info('Successfully uploaded optimized video: %s %s',
+                              new_media_id, metadata)
+
         else:
             with S3Object(context.config, media_id) as s3_object_update:
-                if s3_object_update.upload(filename, **metadata):
-                    self.log.info('Successfully updated video: %s %s',
-                                  media_id, metadata)
-                else:
+                if not s3_object_update.set_metadata(metadata, True):
                     return False
+
+                # if s3_object_update.upload(filename, **metadata):
+                self.log.info('Successfully updated video: %s %s',
+                              media_id, metadata)
+
         if os.path.isfile(filename):
             os.remove(filename)
         if os.path.isfile(new_filename):
@@ -63,8 +64,11 @@ class UploadJob(Job):
                       new_media_id=new_media_id))
 
         context.schedule.publish_event(
-            JobName.Notify.value, media_id=media_id, post_id=post_id, metadata=metadata,
-            new_media_id=new_media_id, content_metadata=content_metadata)
+            JobName.Notify.value, media_id=media_id, post_id=post_id,
+            metadata=metadata, new_media_id=new_media_id,
+            content_metadata=content_metadata,
+            new_filename=new_filename,
+            filename=filename)
         return True
 
     def interval(self) -> datetime.timedelta:

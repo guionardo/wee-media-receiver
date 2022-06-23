@@ -1,3 +1,5 @@
+.PHONY: frontend
+
 updatepip:
 	pipenv update -d
 
@@ -12,3 +14,6 @@ requirements:
 
 backend:
 	docker run --rm -p 8080:8080 -e PORT=8080 -v ${PWD}/tests/backend_responses:/app/custom_responses guionardo/http_helloworld:latest
+
+frontend:
+	$(shell cd frontend && yarn dist)

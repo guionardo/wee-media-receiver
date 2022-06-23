@@ -38,22 +38,12 @@ class ReceiveVideoJob(Job):
                     status=MediaStatusEnum.Done))
                 return False
 
-            self.log.info('Content analysing file %s', media_id)
-            if not s3_object.download():
-                return False
-            context.repository.set_media(MediaData(
-                post_id=post_id,
-                media_id=media_id,
-                media_path=s3_object.filename(),
-                status=MediaStatusEnum.Downloaded))
-
             context.schedule.publish_event(JobName.Analysis.value,
                                            media_id=media_id,
                                            post_id=post_id,
-                                           filename=s3_object.filename(),
                                            metadata=s3_object.metadata)
 
-        return True
+            return True
 
     def interval(self) -> datetime.timedelta:
         return datetime.timedelta(seconds=0)

@@ -118,6 +118,22 @@ class MediaRepository:
             self.lock.release()
         return result
 
+    def get_latest_media(self, limit: int = 5) -> List[MediaData]:
+        result = []
+        try:
+            self.lock.acquire()
+            for row in self.conn.execute(
+                f'SELECT {MediaData.field_names_sql()} '
+                'FROM media '
+                'ORDER BY creation_date DESC '
+                    f'LIMIT {limit}'):
+                result.append(MediaData(row))
+        except Exception as exc:
+            self.log.error('Failed to get latest media: %s', exc)
+        finally:
+            self.lock.release()
+        return result
+
 
 def get_repository(config: Config) -> MediaRepository:
     global singleton_repository

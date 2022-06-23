@@ -31,17 +31,25 @@ class TestMediaRepository(unittest.TestCase):
         repo = MediaRepository(self.config)
 
         self.assertTrue(repo.set_media(MediaData(
-            media_id=1234, media_path='/tmp/teste.mp4', media_new_path='/tmp/teste.webm')))
+            media_id=1234,
+            media_path='/tmp/teste.mp4',
+            media_new_path='/tmp/teste.webm')))
 
         md = repo.get_media(1234)
         self.assertEqual(md.media_path, '/tmp/teste.mp4')
 
         self.assertTrue(repo.set_media(MediaData(
-            media_id=2, media_path='/tmp/teste2.mp4', media_new_path='/tmp/teste.webm', notification_accepted=1)))
+            media_id=2, media_path='/tmp/teste2.mp4',
+            media_new_path='/tmp/teste.webm',
+            notification_accepted=1)))
         self.assertTrue(repo.set_media(MediaData(
-            media_id=3, media_path='/tmp/teste3.mp4', media_new_path='/tmp/teste.webm', notification_accepted=0)))
+            media_id=3, media_path='/tmp/teste3.mp4',
+            media_new_path='/tmp/teste.webm',
+            notification_accepted=0)))
         self.assertTrue(repo.set_media(MediaData(
-            media_id=4, media_path='/tmp/teste4.mp4', media_new_path='/tmp/teste.webm', notification_accepted=1)))
+            media_id=4, media_path='/tmp/teste4.mp4',
+            media_new_path='/tmp/teste.webm',
+            notification_accepted=1)))
 
         unnotified = repo.get_unnotified_media()
         self.assertEqual(len(unnotified), 2)

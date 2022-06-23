@@ -3,6 +3,7 @@ from enum import Enum
 
 class MediaStatusEnum(Enum):
     Accepted = 'ACCEPTED'
+    Downloading = 'DOWNLOADING'
     Downloaded = 'DOWNLOADED'
     Analysing = 'ANALYSING'
     Analysed = 'ANALYSED'
@@ -14,5 +15,6 @@ class MediaStatusEnum(Enum):
     Notified = 'NOTIFIED'
     NotFound = 'NOT FOUND'
     Processing = 'PROCESSING'
+    Processed = 'PROCESSED'
     Rejected = 'REJECTED'
     Done = 'DONE'

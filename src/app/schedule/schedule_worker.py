@@ -26,16 +26,19 @@ class Job(Protocol):
             all(self.get_event_fields(event, *self._field_names)))
 
     def get_event_fields(self, event) -> list:
-        return [event.get(field_name, None) for field_name in self._field_names]
+        return [event.get(field_name, None)
+                for field_name in self._field_names]
 
     def can_log(self) -> bool:
         return True
 
     def can_process(self, event) -> bool:
-        return (
-            event.get('type', None) == self._type and
-            (not self._field_names or
-             all(self.get_event_fields(event, *self._field_names))))
+        if event.get('type', None) != self._type:
+            return False
+        for field in self._field_names:
+            if field not in event:
+                return False
+        return True
 
     def do_process(self, event, context) -> bool:
         ...
@@ -109,7 +112,8 @@ class ScheduleWorker:
                 queue.put({'type': JobName.Renotify.value}, block=True)
                 continue
             except Exception as exc:
-                self.log.error('Error processing event %s: %s', event, exc)
+                self.log.error('Error processing event %s: %s',
+                               event, str(exc), exc_info=exc)
 
         self.log.info('SchedulerWorker stopped')
         exit(0)
@@ -120,7 +124,9 @@ class ScheduleWorker:
             return
         self._can_run = True
         t = threading.Thread(target=self.run,
-                             name='ScheduleWorker', daemon=True, kwargs=dict(q=q))
+                             name='ScheduleWorker',
+                             daemon=True,
+                             kwargs=dict(q=q))
         self.log.info('ScheduleWorker starting')
         t.start()
 
@@ -131,7 +137,9 @@ class ScheduleWorker:
 
 class ScheduleContext:
 
-    def __init__(self, config: Config, schedule: ScheduleWorker, media_repository: MediaRepository):
+    def __init__(self, config: Config,
+                 schedule: ScheduleWorker,
+                 media_repository: MediaRepository):
         self.config = config
         self.schedule = schedule
         self.repository = media_repository

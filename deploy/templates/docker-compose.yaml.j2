@@ -11,5 +11,5 @@ services:
     ports:
       - "8000:8000"
 
-    volumes:
-      - "./logs:{{api_source}}/logs"
+    volumes:      
+      - "{{api_source}}/data:/api/data"

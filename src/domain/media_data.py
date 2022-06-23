@@ -7,8 +7,9 @@ from src.dto.media_status_enum import MediaStatusEnum
 
 class MediaData:
 
-    __slots__ = ['post_id', 'media_id', 'creation_date', 'media_path', 'new_media_path',
-                 'category', 'notification_sent', 'notification_accepted', 'status', 'new_media_id']
+    __slots__ = ['post_id', 'media_id', 'creation_date', 'media_path',
+                 'new_media_path', 'category', 'notification_sent',
+                 'notification_accepted', 'status', 'new_media_id']
 
     CREATE_TABLE_SQL = '''
 CREATE TABLE IF NOT EXISTS media (
@@ -89,3 +90,12 @@ CREATE UNIQUE INDEX IF NOT EXISTS media_media_path_IDX ON media (media_path);
     @classmethod
     def field_values_placeholders(cls) -> str:
         return ','.join(['?'] * len(cls.__slots__))
+
+    def __str__(self):
+        return (f'#{self.post_id} {self.media_id}' +
+                (''
+                 if not self.new_media_id or
+                 self.new_media_id == self.media_id
+                 else f' -> {self.new_media_id}') +
+                f' : {self.status.value}' +
+                ('' if not self.category else f' : {self.category}'))

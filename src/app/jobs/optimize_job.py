@@ -27,7 +27,8 @@ class OptimizeJob(Job):
             category=content_metadata,
             status=MediaStatusEnum.Optimizing))
 
-        with VideoOptimizer(media_id, filename, keep_temp=True) as video_optimizer:
+        with VideoOptimizer(media_id, filename,
+                            keep_temp=True) as video_optimizer:
             video_optimizer.run()
             context.repository.set_media(MediaData(
                 post_id=post_id,
@@ -38,11 +39,17 @@ class OptimizeJob(Job):
                 status=MediaStatusEnum.Optimized,
                 new_media_id=video_optimizer.new_media_id())
             )
+            self.log.info('Optimization: %s', video_optimizer.message)
             metadata['wmr-status'] = 'OPTIMIZED'
 
-            context.schedule.publish_event(JobName.Upload.value, filename=filename, new_filename=video_optimizer.new_file,
-                                           media_id=media_id, post_id=post_id, metadata=metadata, content_metadata=content_metadata,
-                                           new_media_id=video_optimizer.new_media_id())
+            context.schedule.publish_event(
+                JobName.Upload.value, filename=filename,
+                new_filename=video_optimizer.new_file,
+                media_id=media_id, post_id=post_id, metadata=metadata,
+                content_metadata=content_metadata,
+                new_media_id=video_optimizer.new_media_id())
+
+        return True
 
     def interval(self) -> datetime.timedelta:
         return datetime.timedelta(seconds=0)

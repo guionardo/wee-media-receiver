@@ -9,6 +9,7 @@ RUN pip install -r requirements.txt
 RUN mkdir -p ./data/logs
 COPY src/ ./src/
 COPY main.py .
+COPY release.txt .
 
 EXPOSE 8000
 

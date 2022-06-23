@@ -1,12 +1,17 @@
 import urllib.parse
 
 import pydantic
+from src.config.config import Config
 
 
 class MediaRequestValidator:
 
-    def __init__(self, url: str, ):
+    def __init__(self, url: str, config: Config):
         u = urllib.parse.urlparse(url)
+        if not u.hostname:
+            ucfg = urllib.parse.urlparse(config.endpoint_url)
+            url = f'{ucfg.scheme}://{ucfg.netloc}/{config.endpoint_path_prefix}/{url}'
+            u = urllib.parse.urlparse(url)
         self.url = url
         self.bucket_name = u.netloc.split('.')[0]
         self.s3_host = f'{u.scheme}://{u.netloc}/'

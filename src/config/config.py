@@ -18,11 +18,15 @@ class Config:
         self.secret_key = self._getenv('S3_SECRET_KEY')
         self.bucket_name = self._getenv('S3_BUCKET_NAME')
         self.endpoint_url = self._getenv('S3_ENDPOINT_URL')
+        self.cluster_url = self._getenv('S3_CLUSTER_URL')
 
         if not self.endpoint_url.endswith('/'):
             self.endpoint_url += '/'
         self.endpoint_path_prefix = self._getenv(
             'S3_ENDPOINT_PATH_PREFIX', 'uploads/')
+        if self.endpoint_path_prefix.startswith('/'):
+            self.endpoint_path_prefix = self.endpoint_path_prefix[1:]
+
         if (self.endpoint_path_prefix and
                 not self.endpoint_path_prefix.endswith('/')):
             self.endpoint_path_prefix += '/'
@@ -48,7 +52,7 @@ class Config:
         return dict(
             aws_access_key_id=self.access_key,
             aws_secret_access_key=self.secret_key,
-            endpoint_url=self.endpoint_url,
+            endpoint_url=self.cluster_url,
         )
 
     def _getenv(self, key: str, default: str = None) -> str:

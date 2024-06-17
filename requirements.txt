@@ -8,11 +8,16 @@ opencv_python_headless==4.5.5.64
 pydantic==1.9.1
 python_ffmpeg==1.0.14
 starlette==0.19.1
-tensorflow==2.9.1
+tensorflow==2.12.0rc1
 tensorflow_hub==0.12.0
-urllib3==1.26.9
+urllib3==1.26.18
 uvicorn==0.17.6
 Pillow==9.1.1
 lockfile==0.12.2
 python-multipart==0.0.5
 email-validator==1.2.1
+keras>=2.13.1rc0 # not directly required, pinned by Snyk to avoid a vulnerability
+requests>=2.32.2 # not directly required, pinned by Snyk to avoid a vulnerability
+setuptools>=65.5.1 # not directly required, pinned by Snyk to avoid a vulnerability
+werkzeug>=3.0.3 # not directly required, pinned by Snyk to avoid a vulnerability
+wheel>=0.38.0 # not directly required, pinned by Snyk to avoid a vulnerability
